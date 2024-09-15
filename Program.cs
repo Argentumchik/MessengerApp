@@ -1,3 +1,7 @@
+using MessengerApp.Hubs;
+using MessengerApp.Models;
+using Microsoft.EntityFrameworkCore;
+
 namespace MessengerApp
 {
     public class Program
@@ -5,9 +9,24 @@ namespace MessengerApp
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            var configuration = builder.Configuration;
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddSignalR();
+
+            builder.Services.AddDbContext<MessengerDbContext>(options => options.UseSqlServer(configuration.GetConnectionString(nameof(MessengerDbContext))));
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(builder =>
+                {
+                    builder.WithOrigins("http://localhost:5173")
+                            .AllowAnyHeader()
+                            .AllowAnyMethod()
+                            .AllowCredentials();
+                });
+            });
 
             var app = builder.Build();
 
@@ -24,11 +43,16 @@ namespace MessengerApp
 
             app.UseRouting();
 
+            app.UseCors();
+
             app.UseAuthorization();
 
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
+
+            app.MapHub<ChatHub>("/chathub");
+            app.MapControllers();
 
             app.Run();
         }
